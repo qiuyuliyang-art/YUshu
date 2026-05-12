@@ -34,6 +34,8 @@ const api = {
 
 // --- Platform Account Status ---
 
+let currentLoginPlatform = null;
+
 async function checkPlatformStatus() {
   const douyinInfo = document.getElementById('douyinAccountInfo');
   const xhsInfo = document.getElementById('xhsAccountInfo');
@@ -46,13 +48,16 @@ async function checkPlatformStatus() {
     const statuses = await api.get('/api/platforms/status');
     for (const s of statuses) {
       const infoEl = document.getElementById(s.platform === 'douyin' ? 'douyinAccountInfo' : 'xhsAccountInfo');
+      const loginBtn = document.getElementById(s.platform === 'douyin' ? 'loginDouyinBtn' : 'loginXhsBtn');
       if (!infoEl) continue;
       if (s.loggedIn) {
         infoEl.textContent = s.username ? `已登录 (${s.username})` : '已登录';
         infoEl.className = 'account-info logged-in';
+        if (loginBtn) loginBtn.style.display = 'none';
       } else {
         infoEl.textContent = '未登录';
         infoEl.className = 'account-info not-logged-in';
+        if (loginBtn) loginBtn.style.display = 'inline-block';
       }
       platformStatuses[s.platform] = s;
     }
@@ -60,6 +65,77 @@ async function checkPlatformStatus() {
     douyinInfo.textContent = '检测失败';
     xhsInfo.textContent = '检测失败';
   }
+}
+
+// --- Login Flow ---
+
+async function loginPlatform(platform) {
+  currentLoginPlatform = platform;
+  const platformName = platform === 'douyin' ? '抖音' : '小红书';
+
+  document.getElementById('loginModalTitle').textContent = `登录 ${platformName}`;
+  document.getElementById('loginStatusText').textContent = '正在打开浏览器...';
+  document.getElementById('loginQrHint').style.display = 'none';
+  document.getElementById('loginConfirmBtn').style.display = 'none';
+  document.getElementById('loginSpinner').style.display = 'block';
+  document.getElementById('loginModal').style.display = 'flex';
+
+  try {
+    const result = await api.post('/api/accounts/login', { platform });
+
+    if (result.success) {
+      hideLoginModal();
+      checkPlatformStatus();
+      return;
+    }
+
+    // 显示扫码提示
+    document.getElementById('loginSpinner').style.display = 'none';
+    document.getElementById('loginQrHint').style.display = 'block';
+    document.getElementById('loginConfirmBtn').style.display = 'inline-block';
+    document.getElementById('loginStatusText').textContent = result.message;
+
+    // 开始轮询登录状态
+    pollLoginStatus(platform);
+  } catch (err) {
+    document.getElementById('loginStatusText').textContent = '打开浏览器失败: ' + err.message;
+    document.getElementById('loginSpinner').style.display = 'none';
+    document.getElementById('loginConfirmBtn').style.display = 'inline-block';
+  }
+}
+
+async function pollLoginStatus(platform) {
+  const poll = async () => {
+    try {
+      const result = await api.get(`/api/accounts/login/${platform}/wait`);
+      if (result.success) {
+        hideLoginModal();
+        checkPlatformStatus();
+        return;
+      }
+      // 继续轮询
+      setTimeout(poll, 3000);
+    } catch {
+      setTimeout(poll, 5000);
+    }
+  };
+  poll();
+}
+
+function hideLoginModal() {
+  document.getElementById('loginModal').style.display = 'none';
+  currentLoginPlatform = null;
+}
+
+function cancelLogin() {
+  hideLoginModal();
+}
+
+async function confirmLoginDone() {
+  if (!currentLoginPlatform) return;
+  const platform = currentLoginPlatform;
+  hideLoginModal();
+  await checkPlatformStatus();
 }
 
 // --- Content List ---

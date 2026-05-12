@@ -6,6 +6,7 @@ import { publishRouter } from './api/publish.js';
 import { statusRouter } from './api/status.js';
 import { generateRouter } from './api/generate.js';
 import { platformsRouter } from './api/platforms.js';
+import { accountsRouter } from './api/accounts.js';
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use('/api/content', contentRouter);
 app.use('/api/publish', publishRouter);
 app.use('/api/generate', generateRouter);
 app.use('/api/platforms', platformsRouter);
+app.use('/api/accounts', accountsRouter);
 app.use('/api', statusRouter);
 
 app.listen(config.port, () => {

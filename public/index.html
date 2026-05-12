@@ -82,10 +82,12 @@
         <div class="account-item" id="accountDouyin">
           <span class="platform-badge douyin">抖音</span>
           <span class="account-info" id="douyinAccountInfo">检测中...</span>
+          <button class="btn btn-sm btn-login" id="loginDouyinBtn" onclick="loginPlatform('douyin')">登录</button>
         </div>
         <div class="account-item" id="accountXhs">
           <span class="platform-badge xhs">小红书</span>
           <span class="account-info" id="xhsAccountInfo">检测中...</span>
+          <button class="btn btn-sm btn-login" id="loginXhsBtn" onclick="loginPlatform('xiaohongshu')">登录</button>
         </div>
       </div>
 
@@ -176,6 +178,28 @@
         <div class="spinner"></div>
         <p id="generateStatusText">正在生成图片，请稍候...</p>
         <p class="form-hint">首次生成可能需要 1-2 分钟</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login Modal -->
+  <div class="modal-overlay" id="loginModal" style="display:none">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h2 id="loginModalTitle">登录平台</h2>
+        <button class="modal-close" onclick="hideLoginModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align:center">
+        <div class="spinner" id="loginSpinner"></div>
+        <p id="loginStatusText">正在打开浏览器，请稍候...</p>
+        <div id="loginQrHint" style="display:none">
+          <p style="margin-top:16px;font-size:14px;font-weight:600;color:#374151;">请在浏览器中扫码登录</p>
+          <p class="form-hint" style="margin-top:8px">登录完成后会自动检测</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cancelLogin()">取消</button>
+        <button class="btn btn-primary" id="loginConfirmBtn" onclick="confirmLoginDone()" style="display:none">已完成登录</button>
       </div>
     </div>
   </div>

@@ -435,6 +435,19 @@ main {
   color: #dc2626;
 }
 
+.btn-login {
+  margin-left: auto;
+  padding: 2px 10px;
+  font-size: 11px;
+  background: #6366f1;
+  color: white;
+  border-radius: 4px;
+}
+
+.btn-login:hover {
+  background: #4f46e5;
+}
+
 /* Publish Status Badges */
 .publish-badges {
   display: flex;

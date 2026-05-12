@@ -17,7 +17,7 @@ const PLATFORM_URLS: Record<Platform, { url: string; loginCheck: string; usernam
   },
 };
 
-async function checkPlatformLogin(platform: Platform): Promise<PlatformAccountStatus> {
+export async function checkPlatformLogin(platform: Platform): Promise<PlatformAccountStatus> {
   const config = PLATFORM_URLS[platform];
   try {
     const port = await findExistingChromeDebugPort();
