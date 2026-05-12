@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>雨书发布小助手</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>雨书发布小助手</h1>
+    <div class="header-right">
+      <button class="btn btn-sm btn-outline" onclick="checkPlatformStatus()">刷新账号状态</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Left: Content List -->
+    <aside class="sidebar" id="contentList">
+      <div class="sidebar-header">
+        <h2>内容列表</h2>
+        <button class="btn btn-primary btn-sm" onclick="showCreateModal()">+ 新建</button>
+      </div>
+      <div id="contentItems"></div>
+    </aside>
+
+    <!-- Center: Editor -->
+    <section class="editor" id="editor">
+      <div class="empty-state" id="emptyState">
+        <p>选择或创建一个内容开始编辑</p>
+      </div>
+      <div class="editor-form" id="editorForm" style="display:none">
+        <div class="form-group">
+          <label>内容类型</label>
+          <select id="contentType" onchange="updateCurrentContent()">
+            <option value="image-text">图文笔记</option>
+            <option value="video">视频发布</option>
+            <option value="carousel">图文轮播</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>图片预览</label>
+          <div class="image-gallery" id="imageGallery"></div>
+          <div class="upload-area" id="uploadArea">
+            <input type="file" id="fileInput" multiple accept="image/*,video/*" onchange="handleFileUpload(this.files)">
+            <label for="fileInput" class="upload-label">
+              <span>点击或拖拽上传图片/视频</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>标题 <span class="char-count" id="titleCount">0/50</span></label>
+          <input type="text" id="titleInput" maxlength="50" placeholder="输入标题..." oninput="updateCharCount('title')">
+        </div>
+
+        <div class="form-group">
+          <label>描述 <span class="char-count" id="descCount">0/1000</span></label>
+          <textarea id="descInput" maxlength="1000" rows="6" placeholder="输入描述内容..." oninput="updateCharCount('desc')"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>标签（逗号分隔）</label>
+          <input type="text" id="hashtagsInput" placeholder="AI, 效率工具, 自媒体">
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-secondary" onclick="saveContent()">保存</button>
+          <button class="btn btn-danger" onclick="deleteCurrentContent()">删除</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: Publish Panel -->
+    <aside class="publish-panel" id="publishPanel">
+      <h2>发布</h2>
+
+      <!-- Platform Account Status -->
+      <div class="account-status" id="accountStatus">
+        <h3>账号状态</h3>
+        <div class="account-item" id="accountDouyin">
+          <span class="platform-badge douyin">抖音</span>
+          <span class="account-info" id="douyinAccountInfo">检测中...</span>
+        </div>
+        <div class="account-item" id="accountXhs">
+          <span class="platform-badge xhs">小红书</span>
+          <span class="account-info" id="xhsAccountInfo">检测中...</span>
+        </div>
+      </div>
+
+      <div class="platform-select">
+        <label class="checkbox-label">
+          <input type="checkbox" id="platformDouyin" value="douyin">
+          <span class="platform-badge douyin">抖音</span>
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="platformXhs" value="xiaohongshu">
+          <span class="platform-badge xhs">小红书</span>
+        </label>
+      </div>
+      <button class="btn btn-publish" id="publishBtn" onclick="startPublish()" disabled>
+        发布到平台
+      </button>
+
+      <div class="job-log" id="jobLog">
+        <h3>发布日志</h3>
+        <div id="logContent" class="log-content"></div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Create Content Modal -->
+  <div class="modal-overlay" id="createModal" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>新建内容</h2>
+        <button class="modal-close" onclick="hideCreateModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>内容主题 *</label>
+          <input type="text" id="newTopic" placeholder="例如：5个提高效率的AI工具" autofocus>
+          <p class="form-hint">输入你想生成的内容主题，将自动调用 baoyu-image-cards 生成图片</p>
+        </div>
+        <div class="form-group">
+          <label>内容描述</label>
+          <textarea id="newDescription" rows="3" placeholder="详细描述内容..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>图片风格</label>
+          <select id="newStyle">
+            <option value="cute">甜美可爱</option>
+            <option value="fresh">清新自然</option>
+            <option value="warm">温馨亲切</option>
+            <option value="bold">醒目冲击</option>
+            <option value="minimal">极简高级</option>
+            <option value="notion">手绘知识</option>
+            <option value="sketch-notes">手绘笔记</option>
+            <option value="retro">复古怀旧</option>
+            <option value="pop">活力潮流</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>图片数量</label>
+          <select id="newImageCount">
+            <option value="3">3 张</option>
+            <option value="4" selected>4 张</option>
+            <option value="5">5 张</option>
+            <option value="6">6 张</option>
+            <option value="8">8 张</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>内容类型</label>
+          <select id="newContentType">
+            <option value="image-text">图文笔记</option>
+            <option value="carousel">图文轮播</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="hideCreateModal()">取消</button>
+        <button class="btn btn-primary" id="createAndGenerateBtn" onclick="createAndGenerate()">生成图片</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generation Progress Modal -->
+  <div class="modal-overlay" id="generateModal" style="display:none">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h2>生成中</h2>
+      </div>
+      <div class="modal-body" style="text-align:center">
+        <div class="spinner"></div>
+        <p id="generateStatusText">正在生成图片，请稍候...</p>
+        <p class="form-hint">首次生成可能需要 1-2 分钟</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
