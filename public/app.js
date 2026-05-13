@@ -81,7 +81,7 @@ async function loginPlatform(platform) {
   document.getElementById('loginModal').style.display = 'flex';
 
   try {
-    // 调用 Spreado login 命令
+    // 调用改进的登录脚本
     const result = await api.post('/api/accounts/login', { platform });
 
     if (result.success) {
@@ -94,12 +94,17 @@ async function loginPlatform(platform) {
       return;
     }
 
-    // 需要用户扫码
+    // 需要用户扫码 - 显示详细提示
     document.getElementById('loginSpinner').style.display = 'none';
     document.getElementById('loginQrHint').style.display = 'block';
     document.getElementById('loginConfirmBtn').style.display = 'inline-block';
     document.getElementById('loginConfirmBtn').textContent = '已完成登录';
     document.getElementById('loginStatusText').textContent = result.message || '请在浏览器中扫码登录';
+    document.getElementById('loginQrHint').innerHTML = `
+      <p style="margin-top:16px;font-size:14px;font-weight:600;color:#374151;">请在浏览器中扫码登录</p>
+      <p class="form-hint" style="margin-top:8px">登录完成后，系统会自动检测（最长等待5分钟）</p>
+      <p class="form-hint" style="margin-top:4px">登录成功后浏览器会自动关闭</p>
+    `;
 
     // 开始轮询登录状态
     pollLoginStatus(platform);

@@ -6,6 +6,7 @@ import type { Platform } from '../types.js';
 
 const SPREADO_PYTHON = config.spreadoPython || 'D:/Antigravity/.venv/Scripts/python.exe';
 const COOKIES_DIR = path.resolve(config.cookiesDir || './cookies');
+const SCRIPTS_DIR = path.resolve('scripts');
 
 function getSpreadoArgs(platform: string, extraArgs: string[] = []): string[] {
   return ['-m', 'spreado', ...extraArgs, platform];
@@ -16,6 +17,7 @@ export interface AuthResult {
   platform: Platform;
   message: string;
   username?: string;
+  cookiePath?: string;
 }
 
 export interface PlatformLoginStatus {
@@ -25,15 +27,11 @@ export interface PlatformLoginStatus {
   message: string;
 }
 
-async function runSpreadoCommand(args: string[], timeoutMs = 180000): Promise<{ success: boolean; output: string; error: string }> {
+async function runCommand(cmd: string, args: string[], timeoutMs = 180000): Promise<{ success: boolean; output: string; error: string }> {
   return new Promise((resolve) => {
-    const child = spawn(SPREADO_PYTHON, args, {
+    const child = spawn(cmd, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
-      cwd: COOKIES_DIR,
-      env: {
-        ...process.env,
-        PYTHONIOENCODING: 'utf-8',
-      },
+      env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
     });
 
     let stdout = '';
@@ -49,11 +47,7 @@ async function runSpreadoCommand(args: string[], timeoutMs = 180000): Promise<{ 
 
     child.on('close', (code) => {
       clearTimeout(timer);
-      resolve({
-        success: code === 0,
-        output: stdout,
-        error: stderr,
-      });
+      resolve({ success: code === 0, output: stdout, error: stderr });
     });
 
     child.on('error', (err) => {
@@ -64,6 +58,7 @@ async function runSpreadoCommand(args: string[], timeoutMs = 180000): Promise<{ 
 }
 
 export async function checkPlatformLogin(platform: Platform): Promise<PlatformLoginStatus> {
+  // Spreado cookie 文件路径: cookies/{platform}_uploader/account.json
   const cookieFile = path.join(COOKIES_DIR, `${platform}_uploader`, 'account.json');
 
   if (!fs.existsSync(cookieFile)) {
@@ -76,9 +71,9 @@ export async function checkPlatformLogin(platform: Platform): Promise<PlatformLo
   }
 
   // 调用 spreado verify 检查 cookie
-  const result = await runSpreadoCommand(getSpreadoArgs(platform, ['verify']), 30000);
+  const result = await runCommand(SPREADO_PYTHON, getSpreadoArgs(platform, ['verify']), 30000);
 
-  if (result.success && result.output.includes('有效')) {
+  if (result.success) {
     return {
       platform,
       loggedIn: true,
@@ -97,14 +92,14 @@ export async function checkPlatformLogin(platform: Platform): Promise<PlatformLo
 
 export async function startLogin(platform: Platform): Promise<AuthResult> {
   const platformName = platform === 'douyin' ? '抖音' : '小红书';
+  const loginScript = path.join(SCRIPTS_DIR, 'spreado_login.py');
 
   // 确保 cookies 目录存在
   fs.mkdirSync(COOKIES_DIR, { recursive: true });
 
-  // 启动 spreado login（打开浏览器窗口，异步等待）
-  const child = spawn(SPREADO_PYTHON, getSpreadoArgs(platform, ['login']), {
+  // 使用改进的登录脚本
+  const child = spawn(SPREADO_PYTHON, [loginScript, platform, '--timeout', '300'], {
     stdio: ['ignore', 'pipe', 'pipe'],
-    cwd: COOKIES_DIR,
     env: {
       ...process.env,
       PYTHONIOENCODING: 'utf-8',
@@ -112,33 +107,61 @@ export async function startLogin(platform: Platform): Promise<AuthResult> {
     detached: false,
   });
 
-  // 等待3秒看是否快速完成（已有cookie）或需要用户交互
   return new Promise((resolve) => {
     let stdout = '';
     let stderr = '';
 
-    child.stdout?.on('data', (chunk) => { stdout += chunk.toString('utf-8'); });
+    child.stdout?.on('data', (chunk) => {
+      stdout += chunk.toString('utf-8');
+      // 实时输出进度
+      const lines = chunk.toString('utf-8').split('\n');
+      for (const line of lines) {
+        if (line.includes('[INFO]')) {
+          console.log(line);
+        }
+      }
+    });
     child.stderr?.on('data', (chunk) => { stderr += chunk.toString('utf-8'); });
 
-    // 3秒后如果还在运行，说明需要用户扫码
+    // 5秒后如果还在运行，说明需要用户扫码
     const quickCheck = setTimeout(() => {
-      // 进程仍在运行 → 等待用户扫码
       resolve({
         success: false,
         platform,
-        message: `请在浏览器中扫码登录${platformName}`,
+        message: `请在浏览器中扫码登录${platformName}，登录完成后系统会自动检测`,
       });
-    }, 3000);
+    }, 5000);
 
     child.on('close', (code) => {
       clearTimeout(quickCheck);
-      if (code === 0 && stdout.includes('成功')) {
-        resolve({
-          success: true,
-          platform,
-          message: `${platformName}登录成功`,
-        });
-      } else if (code === 0) {
+
+      // 尝试解析 JSON 输出
+      try {
+        const jsonMatch = stdout.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const result = JSON.parse(jsonMatch[0]);
+          if (result.success) {
+            resolve({
+              success: true,
+              platform,
+              message: result.message || `${platformName}登录成功`,
+              cookiePath: result.cookie_path,
+            });
+            return;
+          } else {
+            resolve({
+              success: false,
+              platform,
+              message: result.error || `${platformName}登录失败`,
+            });
+            return;
+          }
+        }
+      } catch {
+        // JSON 解析失败
+      }
+
+      if (code === 0) {
         resolve({
           success: true,
           platform,
@@ -164,7 +187,7 @@ export async function startLogin(platform: Platform): Promise<AuthResult> {
   });
 }
 
-export async function waitForLogin(platform: Platform, timeoutMs = 180000): Promise<AuthResult> {
+export async function waitForLogin(platform: Platform, timeoutMs = 300000): Promise<AuthResult> {
   const cookieFile = path.join(COOKIES_DIR, `${platform}_uploader`, 'account.json');
   const start = Date.now();
 
@@ -172,8 +195,8 @@ export async function waitForLogin(platform: Platform, timeoutMs = 180000): Prom
   while (Date.now() - start < timeoutMs) {
     if (fs.existsSync(cookieFile)) {
       // 验证 cookie
-      const verifyResult = await runSpreadoCommand(getSpreadoArgs(platform, ['verify']), 15000);
-      if (verifyResult.success) {
+      const result = await runCommand(SPREADO_PYTHON, getSpreadoArgs(platform, ['verify']), 15000);
+      if (result.success) {
         return {
           success: true,
           platform,
