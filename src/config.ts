@@ -24,6 +24,8 @@ export const config = {
   chromePath: env.CHROME_PATH || process.env.CHROME_PATH || '',
   contentDir: path.resolve(env.CONTENT_DIR || process.env.CONTENT_DIR || './data/content'),
   uploadDir: path.resolve(env.UPLOAD_DIR || process.env.UPLOAD_DIR || './data/uploads'),
+  spreadoPython: env.SPREADO_PYTHON || process.env.SPREADO_PYTHON || 'D:/Antigravity/.venv/Scripts/python.exe',
+  cookiesDir: env.COOKIES_DIR || process.env.COOKIES_DIR || './cookies',
 };
 
 // Ensure directories exist

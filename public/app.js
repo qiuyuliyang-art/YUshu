@@ -45,17 +45,17 @@ async function checkPlatformStatus() {
   xhsInfo.className = 'account-info';
 
   try {
-    const statuses = await api.get('/api/platforms/status');
+    const statuses = await api.get('/api/accounts/status');
     for (const s of statuses) {
       const infoEl = document.getElementById(s.platform === 'douyin' ? 'douyinAccountInfo' : 'xhsAccountInfo');
       const loginBtn = document.getElementById(s.platform === 'douyin' ? 'loginDouyinBtn' : 'loginXhsBtn');
       if (!infoEl) continue;
-      if (s.loggedIn) {
-        infoEl.textContent = s.username ? `已登录 (${s.username})` : '已登录';
+      if (s.loggedIn && s.cookieValid) {
+        infoEl.textContent = s.message || '已登录';
         infoEl.className = 'account-info logged-in';
         if (loginBtn) loginBtn.style.display = 'none';
       } else {
-        infoEl.textContent = '未登录';
+        infoEl.textContent = s.message || '未登录';
         infoEl.className = 'account-info not-logged-in';
         if (loginBtn) loginBtn.style.display = 'inline-block';
       }
@@ -81,19 +81,25 @@ async function loginPlatform(platform) {
   document.getElementById('loginModal').style.display = 'flex';
 
   try {
+    // 调用 Spreado login 命令
     const result = await api.post('/api/accounts/login', { platform });
 
     if (result.success) {
-      hideLoginModal();
+      // 登录成功
+      document.getElementById('loginSpinner').style.display = 'none';
+      document.getElementById('loginStatusText').textContent = result.message || '登录成功';
+      document.getElementById('loginConfirmBtn').style.display = 'inline-block';
+      document.getElementById('loginConfirmBtn').textContent = '完成';
       checkPlatformStatus();
       return;
     }
 
-    // 显示扫码提示
+    // 需要用户扫码
     document.getElementById('loginSpinner').style.display = 'none';
     document.getElementById('loginQrHint').style.display = 'block';
     document.getElementById('loginConfirmBtn').style.display = 'inline-block';
-    document.getElementById('loginStatusText').textContent = result.message;
+    document.getElementById('loginConfirmBtn').textContent = '已完成登录';
+    document.getElementById('loginStatusText').textContent = result.message || '请在浏览器中扫码登录';
 
     // 开始轮询登录状态
     pollLoginStatus(platform);
@@ -109,7 +115,11 @@ async function pollLoginStatus(platform) {
     try {
       const result = await api.get(`/api/accounts/login/${platform}/wait`);
       if (result.success) {
-        hideLoginModal();
+        // 登录成功
+        document.getElementById('loginSpinner').style.display = 'none';
+        document.getElementById('loginStatusText').textContent = result.message || '登录成功';
+        document.getElementById('loginConfirmBtn').style.display = 'inline-block';
+        document.getElementById('loginConfirmBtn').textContent = '完成';
         checkPlatformStatus();
         return;
       }
@@ -133,7 +143,6 @@ function cancelLogin() {
 
 async function confirmLoginDone() {
   if (!currentLoginPlatform) return;
-  const platform = currentLoginPlatform;
   hideLoginModal();
   await checkPlatformStatus();
 }

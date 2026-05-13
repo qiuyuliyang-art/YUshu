@@ -1,23 +1,26 @@
 import { Router } from 'express';
-import { openLoginWindow, waitForLogin } from '../publishers/auth.js';
-import { checkPlatformLogin } from './platforms.js';
+import { startLogin, waitForLogin, checkPlatformLogin } from '../publishers/auth.js';
 import type { Platform } from '../types.js';
-import type { AuthResult } from '../publishers/auth.js';
 
 export const accountsRouter = Router();
 
 // 检查所有平台登录状态
 accountsRouter.get('/status', async (_req, res) => {
-  const results = await Promise.allSettled([
-    checkPlatformLogin('douyin'),
-    checkPlatformLogin('xiaohongshu'),
-  ]);
+  try {
+    const results = await Promise.allSettled([
+      checkPlatformLogin('douyin'),
+      checkPlatformLogin('xiaohongshu'),
+    ]);
 
-  const statuses = results.map((r) =>
-    r.status === 'fulfilled' ? r.value : { platform: 'unknown', loggedIn: false, checkedAt: new Date().toISOString() }
-  );
+    const statuses = results.map((r) =>
+      r.status === 'fulfilled' ? r.value : { platform: 'unknown', loggedIn: false, cookieValid: false, message: '检测失败' }
+    );
 
-  res.json(statuses);
+    res.json(statuses);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
 });
 
 // 打开登录窗口
@@ -29,7 +32,7 @@ accountsRouter.post('/login', async (req, res) => {
   }
 
   try {
-    const result = await openLoginWindow(platform);
+    const result = await startLogin(platform);
     res.json(result);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -37,7 +40,7 @@ accountsRouter.post('/login', async (req, res) => {
   }
 });
 
-// 等待登录完成（轮询）
+// 等待登录完成
 accountsRouter.get('/login/:platform/wait', async (req, res) => {
   const platform = req.params.platform as Platform;
 
