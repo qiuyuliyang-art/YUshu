@@ -74,7 +74,7 @@ generateRouter.post('/', async (req, res) => {
 
       try {
         await new Promise<void>((resolve, reject) => {
-          const child = spawn(bunCmd[0]!, [...bunCmd.slice(1), BAOYU_IMAGINE_SCRIPT, '--prompt', prompt, '--output', outputFile], {
+          const child = spawn(bunCmd[0]!, [...bunCmd.slice(1), BAOYU_IMAGINE_SCRIPT, '--prompt', prompt, '--image', outputFile], {
             stdio: ['ignore', 'pipe', 'pipe'],
             cwd: path.dirname(BAOYU_IMAGINE_SCRIPT),
           });
