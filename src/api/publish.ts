@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import * as store from '../data/store.js';
-import { publishToXiaohongshu } from '../publishers/xiaohongshu.js';
-import { publishToDouyin } from '../publishers/douyin.js';
+import { publishWithSpreado } from '../publishers/spreado.js';
 import type { Platform, ContentItem, PublisherResult } from '../types.js';
 
 export const publishRouter = Router();
@@ -24,11 +23,6 @@ publishRouter.post('/', async (req, res) => {
   store.updateJob(job.id, { status: 'running' });
 
   // Run publishers in parallel (don't await - respond immediately)
-  const publisherMap: Record<Platform, (c: ContentItem) => Promise<PublisherResult>> = {
-    xiaohongshu: publishToXiaohongshu,
-    douyin: publishToDouyin,
-  };
-
   const runPublishers = async () => {
     const results = await Promise.allSettled(
       platforms.map(async (platform) => {
@@ -38,7 +32,7 @@ publishRouter.post('/', async (req, res) => {
         store.appendJobLog(job.id, `[${platform}] Starting...`);
 
         try {
-          const result = await publisherMap[platform](content);
+          const result = await publishWithSpreado(content, platform);
           store.appendJobLog(job.id, `[${platform}] ${result.message}`);
           const currentJob = store.getJob(job.id);
           if (currentJob) {
