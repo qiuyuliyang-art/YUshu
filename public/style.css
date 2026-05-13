@@ -127,6 +127,50 @@ main {
   color: #999;
 }
 
+/* Create Panel (inline) */
+.create-panel {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 20px 0;
+}
+
+.create-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.create-subtitle {
+  font-size: 14px;
+  color: #9ca3af;
+  margin-bottom: 24px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.form-half {
+  flex: 1;
+}
+
+.btn-lg {
+  padding: 12px 32px;
+  font-size: 15px;
+}
+
+.btn-outline-editor {
+  background: transparent;
+  color: #6366f1;
+  border: 1px solid #6366f1;
+}
+
+.btn-outline-editor:hover {
+  background: #eef2ff;
+}
+
 .editor-form {
   max-width: 640px;
   margin: 0 auto;

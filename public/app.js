@@ -81,11 +81,9 @@ async function loginPlatform(platform) {
   document.getElementById('loginModal').style.display = 'flex';
 
   try {
-    // 调用改进的登录脚本
     const result = await api.post('/api/accounts/login', { platform });
 
     if (result.success) {
-      // 登录成功
       document.getElementById('loginSpinner').style.display = 'none';
       document.getElementById('loginStatusText').textContent = result.message || '登录成功';
       document.getElementById('loginConfirmBtn').style.display = 'inline-block';
@@ -120,7 +118,6 @@ async function pollLoginStatus(platform) {
     try {
       const result = await api.get(`/api/accounts/login/${platform}/wait`);
       if (result.success) {
-        // 登录成功
         document.getElementById('loginSpinner').style.display = 'none';
         document.getElementById('loginStatusText').textContent = result.message || '登录成功';
         document.getElementById('loginConfirmBtn').style.display = 'inline-block';
@@ -197,17 +194,17 @@ function renderContentList() {
   }).join('');
 }
 
-// --- Create Content Modal ---
+// --- Create Panel (Inline, no modal) ---
 
-function showCreateModal() {
-  document.getElementById('createModal').style.display = 'flex';
+function showCreatePanel() {
+  // 取消选中当前内容
+  currentContentId = null;
+  document.getElementById('createPanel').style.display = 'block';
+  document.getElementById('editorForm').style.display = 'none';
   document.getElementById('newTopic').value = '';
   document.getElementById('newDescription').value = '';
   document.getElementById('newTopic').focus();
-}
-
-function hideCreateModal() {
-  document.getElementById('createModal').style.display = 'none';
+  renderContentList();
 }
 
 async function createAndGenerate() {
@@ -221,8 +218,6 @@ async function createAndGenerate() {
   const style = document.getElementById('newStyle').value;
   const imageCount = parseInt(document.getElementById('newImageCount').value);
   const contentType = document.getElementById('newContentType').value;
-
-  hideCreateModal();
 
   // Show generating modal
   document.getElementById('generateModal').style.display = 'flex';
@@ -297,7 +292,8 @@ async function selectContent(id) {
   const item = contentList.find((c) => c.id === id);
   if (!item) return;
 
-  document.getElementById('emptyState').style.display = 'none';
+  // 切换到编辑器视图
+  document.getElementById('createPanel').style.display = 'none';
   document.getElementById('editorForm').style.display = 'block';
 
   document.getElementById('contentType').value = item.contentType;
@@ -333,8 +329,7 @@ async function deleteCurrentContent() {
   if (!confirm('确定删除这个内容？')) return;
   await api.del(`/api/content/${currentContentId}`);
   currentContentId = null;
-  document.getElementById('emptyState').style.display = 'flex';
-  document.getElementById('editorForm').style.display = 'none';
+  showCreatePanel();
   await loadContentList();
 }
 
@@ -484,15 +479,9 @@ function escapeHtml(str) {
 document.getElementById('platformDouyin').addEventListener('change', updatePublishButton);
 document.getElementById('platformXhs').addEventListener('change', updatePublishButton);
 
-// Close modal on overlay click
-document.getElementById('createModal').addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) hideCreateModal();
-});
-
 // Keyboard shortcut
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    hideCreateModal();
     document.getElementById('generateModal').style.display = 'none';
   }
 });
